@@ -19,7 +19,7 @@ const UserSchema = new mongoose.Schema({
     }
 });
 
-const User = mongoose.model('User', UserSchema);
+const User = mongoose.model('User', UserSchema,'user_datas');
 
 const FoodSchema = new mongoose.Schema({
     foodName: {
@@ -107,12 +107,12 @@ app.post('/api/login', async (req, res) => {
 
     const user = await User.findOne({ userName });
     if (!user) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        return res.status(400).json({ message: 'Invalid Username' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        return res.status(400).json({ message: 'Invalid password' });
     }
 
     const token = jwt.sign(
