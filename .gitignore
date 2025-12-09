@@ -10,3 +10,7 @@ ToDo_Application/Backend/.env
 ToDo_Application/Backend/package.json
 ToDo_Application/Backend/package-lock.json
 ToDo_Application/Backend/node_modules
+JWT_middleware/Backend/node_modules/
+JWT_middleware/Backend/package-lock.json
+JWT_middleware/Backend/package.json
+JWT_middleware/Backend/.env
