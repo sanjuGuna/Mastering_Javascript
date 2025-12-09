@@ -6,3 +6,7 @@ Backend/package-lock.json
 Backend/package.json
 Backend/.env
 FoodApp/Backend/.env
+ToDo_Application/Backend/.env
+ToDo_Application/Backend/package.json
+ToDo_Application/Backend/package-lock.json
+ToDo_Application/Backend/node_modules

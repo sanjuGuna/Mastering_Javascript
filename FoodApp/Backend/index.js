@@ -57,7 +57,7 @@ app.put('/update/:id',async(req,res)=>{
 app.delete('/delete/:id',async(req,res)=>{
     const id=req.params.id;
     try{
-        await FoodModel.findByIdAndRemove(id);
+        await FoodModel.findByIdAndDelete(id);
         res.status(200).send("Food item deleted successfully");
     }catch(err){
         res.status(500).send("Error deleting the foodItem")
