@@ -15,3 +15,5 @@ const FoodSchema=new mongoose.Schema({
 });
 
 const Foody=mongoose.model('Food_data',FoodSchema);
+
+module.exports=Foody;
