@@ -1,103 +1,85 @@
-const express=require('express');
-const jwt=require('jsonwebtoken');
-const bycrypt=require('bcrypt');//hashing of password from plainTest to UnReadable Format
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
-const app=express();
-const cors=require('cors');
-app.use(cors())
+const app = express();
+const cors = require('cors');
+app.use(cors());
 app.use(express.json());
-const mongoose=require('mongoose');
+const mongoose = require('mongoose');
 
-const UserSchema=new mongoose.Schema({
-    userName:{
-        type:String,
-        required:true
+const UserSchema = new mongoose.Schema({
+    userName: {
+        type: String,
+        required: true
     },
-    password:{
-        type:String,
-        required:true
-    },
-});
-
-const User=mongoose.model('User',UserSchema);
-const FoodSchema=new mongoose.Schema({
-    foodName:{
-        type:String,
-        required:true
-    },
-    cuisine:{
-        type:String,
-        required:true
-    },
-    user:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'User'
+    password: {
+        type: String,
+        required: true
     }
 });
 
-const Food=mongoose.model('Food_User',FoodSchema);
-try{
-    mongoose.connect(process.env.MONGODB_URL);
-}catch(err){
-    console.log("Error connecting with database");
-}
+const User = mongoose.model('User', UserSchema);
 
-// ---- VALID TOKEN VERIFICATION MIDDLEWARE ----
-function verifyToken(req, res, next) {
+const FoodSchema = new mongoose.Schema({
+    foodName: {
+        type: String,
+        required: true
+    },
+    cuisine: {
+        type: String,
+        required: true
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }
+});
+
+const Food = mongoose.model('Food', FoodSchema);
+
+// connect to mongo
+mongoose
+    .connect(process.env.MONGODB_URL)
+    .then(() => console.log('MongoDB connected'))
+    .catch((err) => console.log('Error connecting with database', err));
+
+// helper: auth middleware
+const authenticate = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+    const token = authHeader.split(' ')[1];
     try {
-        const authHeader = req.headers.authorization || req.headers.Authorization;
-
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({ message: "No token provided" });
-        }
-    const token = authHeader.replace('Bearer',''); // Extract token only
-    const secret = process.env.JWT_SECRET || "fallback_secret";
-    jwt.verify(token, secret, (err, decoded) => {
-        if (err) {
-        // Handle token errors clearly
-            if (err.name === "TokenExpiredError") {
-                return res.status(401).json({ message: "Token expired" });
-            }
-            if (err.name === "JsonWebTokenError") {
-                return res.status(401).json({ message: "Invalid token" });
-            }
-                return res.status(401).json({ message: "Token verification failed" });
-        }
-        req.user = decoded; // decoded contains { id, userName, iat, exp }
-        next(); // pass to next function..
-    });
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        req.user = payload;
+        next();
     } catch (err) {
-        console.error("verifyToken error:", err);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(401).json({ message: 'Invalid token' });
     }
-}
+};
 
+// REGISTER
+app.post('/api/register', async (req, res) => {
+    try {
+        const { userName, password } = req.body;
 
-//REGISTER
-app.post('/api/resister', async (req, res) => {
-try {
-    const { userName, password } = req.body;
+        if (!userName || !password) {  
+            return res.status(400).json({ message: 'userName and password are required' });
+        }
 
-    if (!userName || !password) {
-        return res.status(400).json({ message: 'userName and password are required' });
-    }
-
-    // check for existing user
     const existing = await User.findOne({ userName });
     if (existing) {
         return res.status(409).json({ message: 'Username already taken' });
     }
 
-    // hash password and save user
-    const hashingPassword = await bycrypt.hash(password, 10);
+    const hashingPassword = await bcrypt.hash(password, 10);
     const user = new User({
-        userName,              // <-- use field name directly
+        userName,
         password: hashingPassword
     });
 
     await user.save();
 
-    // create JWT
     const token = jwt.sign(
         { id: user._id, userName: user.userName },
         process.env.JWT_SECRET || 'fallback_secret',
@@ -109,28 +91,26 @@ try {
         user: { id: user._id, userName: user.userName },
         token
     });
-    }catch (err) {
+    } catch (err) {
     console.error('Register error:', err);
     return res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-// ---- LOGIN ----
+// LOGIN
 app.post('/api/login', async (req, res) => {
-try {
-    const { userName, password } = req.body;
-
-    if (!userName || !password) {
+    try {
+        const { userName, password } = req.body;
+        if (!userName || !password) {
         return res.status(400).json({ message: 'userName and password are required' });
     }
 
     const user = await User.findOne({ userName });
     if (!user) {
-      // keep message generic for security
         return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bycrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -146,8 +126,84 @@ try {
         user: { id: user._id, userName: user.userName },
         token
     });
-    }catch (err) {
-    console.error('Login error:', err);
+    } catch (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Create food (authenticated)
+app.post('/api/food', authenticate, async (req, res) => {
+    try {
+        const { foodName, cuisine } = req.body;
+        if (!foodName || !cuisine) {
+            return res.status(400).json({ message: 'foodName and cuisine are required' });
+        }
+
+    const food = new Food({
+        foodName,
+        cuisine,
+        user: req.user.id
+    });
+
+    await food.save();
+    return res.status(201).json({ message: 'Food created', food });
+    } catch (err) {
+        console.error('Create food error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Get foods for authenticated user
+app.get('/api/showfood', authenticate, async (req, res) => {
+    try {
+        const foods = await Food.find({ user: req.user.id }).populate('user', 'userName');
+        return res.status(200).json({ foods });
+    } catch (err) {
+        console.error('Get foods error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Update food (PUT)
+app.put('/api/updatefood/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { foodName, cuisine } = req.body;
+        if (!foodName && !cuisine) {
+            return res.status(400).json({ message: 'At least one of foodName or cuisine is required' });
+    }
+
+    const food = await Food.findById(id);
+    if (!food) return res.status(404).json({ message: 'Food not found' });
+    if (food.user.toString() !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
+
+    if (foodName) food.foodName = foodName;
+    if (cuisine) food.cuisine = cuisine;
+
+    await food.save();
+    return res.status(200).json({ message: 'Food updated', food });
+    } catch (err) {
+        console.error('Update food error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Delete food (DELETE)
+app.delete('/api/deletefood/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const food = await Food.findById(id);
+        if (!food) return res.status(404).json({ message: 'Food not found' });
+        if (food.user.toString() !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
+
+    await Food.findByIdAndDelete(id);
+    return res.status(200).json({ message: 'Food deleted' });
+    } catch (err) {
+    console.error('Delete food error:', err);
     return res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
