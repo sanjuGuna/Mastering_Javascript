@@ -5,3 +5,4 @@ FoodApp/Backend/package.json
 Backend/package-lock.json
 Backend/package.json
 Backend/.env
+FoodApp/Backend/.env
