@@ -1,7 +1,7 @@
 Backend/node_modules/
-FoodApp/Backend/node_modules
-FoodApp/Backend/package-lock.json
-FoodApp/Backend/package.json
+FoodApp-Project/FoodApp/Backend/node_modules
+FoodApp-Project/FoodApp/Backend/package-lock.json
+FoodApp-Project/FoodApp/Backend/package.json
 Backend/package-lock.json
 Backend/package.json
 Backend/.env
@@ -14,6 +14,11 @@ JWT_middleware/Backend/node_modules/
 JWT_middleware/Backend/package-lock.json
 JWT_middleware/Backend/package.json
 JWT_middleware/Backend/.env
+FoodApp-Project/foodApp_Client/package-lock.json
+FoodApp-Project/foodApp_Client/package.json
+FoodApp-Project/foodApp_Client/vite.config.js
+FoodApp-Project/foodApp_Client/node_modules/
+
 
 # Logs
 logs
