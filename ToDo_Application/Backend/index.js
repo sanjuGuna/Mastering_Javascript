@@ -45,7 +45,7 @@ app.put('/updateTask/:id',async (req,res)=>{
     const id=req.params.id;
     const newStatus=req.body.newStatus;
     try{
-        TaskModel.findByIdAndUpdate(id,{status: newStatus},{new: true});
+        await TaskModel.findByIdAndUpdate(id,{status: newStatus},{new: true});
         res.status(200).send("Task updated successfully");
     }catch(err){
         res.status(500).send("Task updation failed..Try again");
