@@ -3,6 +3,8 @@ import multer from 'multer';
 import cookie from 'cookie';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const app=express();
 const upload=multer();
@@ -30,17 +32,19 @@ app.get("/visit",(req,res)=>{
 })
 
 //register
-app.post("/register", (req,res)=>{
+app.post("/register", async (req,res)=>{
     const {userName, password}=req.body;
     if(!userName || !password){
         return res.status(400).send({message:"bad request"});
     }
-    users.push({userName,password});
+    const hashedPassword=await bcrypt.hash(password,10);
+    users.push({userName,password: hashedPassword});
+    console.log(password, hashedPassword);
     return res.send({message:"user registered successfully"});
 });
 
 //login
-app.post("/login",  (req,res)=>{
+app.post("/login", async (req,res)=>{
     const {userName, password}=req.body;
     const userIndex=users.findIndex((u)=>u.userName===userName);
 
@@ -51,18 +55,26 @@ app.post("/login",  (req,res)=>{
         return res.status(404).send({message:"user not found"});
     }
     const user=users[userIndex];
-    if(!user || user.password!==password){
+    if(!user || !(await bcrypt.compare(password,user.password))){
         return res.send({message:"Not authorized"});
     }
-    req.session.user=user;
-    return res.send({message:"user logged in"});
+    const token=jwt.sign({userName},'test#secretS@4@980*&q924b@$!');
+    // req.session.user=user;
+    return res.json({token});
 });
 
 app.get("/dashboard",(req,res)=>{
-    if(!req.session.user){
-        return res.send({message:"user unauthorized"});
+    // if(!req.session.user){
+    //     return res.send({message:"user unauthorized"});
+    // }
+    // return res.send({message:`Welcome ${req.session.user.userName}`});
+
+    const token=req.header('Authorization');
+    const decode=jwt.verify(token,'test#secretS@4@980*&q924b@$!');
+    if(decode.userName){
+        return res.send({message:`You are verified ${decode.userName}`});
     }
-    return res.send({message:`Welcome ${req.session.user.userName}`});
+    return res.send({message:"Not allowed to access protected route"});
 })
 app.get("/",(req,res)=>{
     res.cookie('name','value-',{maxAge:120000});
